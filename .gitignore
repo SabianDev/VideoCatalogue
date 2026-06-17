@@ -1,0 +1,18 @@
+# Node.js
+node_modules/
+.env
+
+# Database
+*.db
+*.db-journal
+
+# File sementara
+.DS_Store
+*.log
+
+# Hasil build Vue
+client-vue/dist/
+client-vue/node_modules/
+
+# Thumbnail (opsional, kalau mau ikut diupload bisa dihapus baris ini)
+# thumbnails/
