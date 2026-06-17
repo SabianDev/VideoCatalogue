@@ -15,4 +15,4 @@ client-vue/dist/
 client-vue/node_modules/
 
 # Thumbnail (opsional, kalau mau ikut diupload bisa dihapus baris ini)
-# thumbnails/
+thumbnails/

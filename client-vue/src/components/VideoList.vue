@@ -46,7 +46,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { injectNotification } from '../composables/useNotification'
 
+const { showNotification } = injectNotification()
 const videos = ref([])
 const loading = ref(true)
 const error = ref(null)
@@ -75,17 +77,17 @@ function formatDuration(seconds) {
 }
 
 // Panggil endpoint play
-async function playVideo(id) {
+const playVideo = async (id) => {
   try {
     const response = await fetch(`/api/play/${id}`, { method: 'POST' })
     const data = await response.json()
     if (response.ok) {
-      alert(data.message || 'Memutar video...')
+      showNotification(data.message || 'Memutar video...')
     } else {
-      alert('Error: ' + (data.error || 'Gagal memutar video'))
+      showNotification('Error: ' + (data.error || 'Gagal memutar video'), 3000)
     }
   } catch (err) {
-    alert('Gagal menghubungi server: ' + err.message)
+    showNotification('Gagal menghubungi server: ' + err.message, 3000)
   }
 }
 

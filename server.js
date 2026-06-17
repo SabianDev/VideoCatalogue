@@ -104,36 +104,28 @@ app.get('/api/videos', (req, res) => {
 
 // Endpoint open with VLC
 const { exec } = require('child_process');
-
-// Endpoint untuk memutar video via VLC
 app.post('/api/play/:id', (req, res) => {
     const id = req.params.id;
-    
     try {
-        // Ambil file_path dari database
         const stmt = db.prepare('SELECT file_path FROM videos WHERE id = ?');
         const video = stmt.get(id);
-        
         if (!video) {
             return res.status(404).json({ error: 'Video tidak ditemukan' });
         }
-        
         const filePath = video.file_path;
-        
-        // Sesuaikan perintah untuk Windows
-        // Gunakan path lengkap VLC jika perlu
-        let command = `start vlc "${filePath}"`;
-        // Alternatif jika VLC tidak di PATH:
-        // const vlcPath = '"C:\\Program Files\\VideoLAN\\VLC\\vlc.exe"';
-        // let command = `start ${vlcPath} "${filePath}"`;
-        
-        exec(command, (error, stdout, stderr) => {
+        const command = `start vlc "${filePath}"`;
+
+        // Jalankan perintah, tapi jangan tunggu selesai
+        const child = exec(command, (error, stdout, stderr) => {
             if (error) {
                 console.error(`Gagal buka VLC: ${error.message}`);
-                return res.status(500).json({ error: 'Gagal membuka VLC. Pastikan VLC terinstal.' });
             }
-            res.json({ message: `Memutar: ${filePath}` });
         });
+        child.unref(); // lepaskan agar tidak menghalangi response
+
+        // Langsung kirim response
+        res.json({ message: `Memutar: ${filePath}` });
+
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

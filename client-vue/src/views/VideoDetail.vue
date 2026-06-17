@@ -43,7 +43,9 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { injectNotification } from '../composables/useNotification'
 
+const { showNotification } = injectNotification()
 const route = useRoute()
 const router = useRouter()
 const video = ref(null)
@@ -90,7 +92,11 @@ const playVideo = async () => {
   const id = route.params.id
   const res = await fetch(`/api/play/${id}`, { method: 'POST' })
   const data = await res.json()
-  alert(data.message)
+  if (res.ok) {
+    showNotification(data.message || 'Memutar video...')
+  } else {
+    showNotification('Error: ' + (data.error || 'Gagal memutar video'), 3000)
+  }
 }
 
 const toggleFavorite = () => {
