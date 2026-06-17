@@ -14,6 +14,16 @@ const router = createRouter({
       path: '/video/:id',
       name: 'video-detail',
       component: () => import('../views/VideoDetail.vue')
+    },
+    {
+      path: '/options',
+      name: 'options',
+      component: { template: '<div style="padding:2rem;color:white;text-align:center;"><h1>Options</h1><p>Coming soon...</p></div>' }
+    },
+    {
+      path: '/manage/videos',
+      name: 'manage-videos',
+      component: () => import('../views/ManageVideos.vue')
     }
   ]
 })

@@ -25,28 +25,64 @@ app.get('/api/test-db', (req, res) => {
 });
 
 // ENDPOINT KEDUA : menambah video baru
+// app.post('/api/videos', (req, res) => {
+//     const { title, type, genre, duration, file_path, poster_path, year, country, description, bg_path } = req.body;
+
+//     // Validasi sederhana
+//     if (!title || !type || !file_path) {
+//         return res.status(400).json({ error: 'title, type, dan file_path wajib diisi' });
+//     }
+
+//     if (type !== 'movie' && type !== 'series') {
+//         return res.status(400).json({ error: 'type harus "movie" atau "series"' });
+//     }
+
+//     try {
+//         const stmt = db.prepare(`
+//         INSERT INTO videos (title, type, genre, duration, file_path, poster_path, year, country, description, bg_path)
+//         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//         `);
+
+//         const info = stmt.run(title, type, genre, duration || null, file_path, poster_path || null, year || null, country || null, description || null);
+
+//         res.status(201).json({ id: info.lastInsertRowid, message: 'Video berhasil ditambahkan' });
+
+//     } catch (err) {
+//         if (err.message.includes('UNIQUE constraint failed')) {
+//             res.status(409).json({ error: 'File path sudah ada' });
+//         } else {
+//             res.status(500).json({ error: err.message });
+//         }
+//     }
+// });
 app.post('/api/videos', (req, res) => {
     const { title, type, genre, duration, file_path, poster_path, year, country, description, bg_path } = req.body;
 
-    // Validasi sederhana
+    // Validasi
     if (!title || !type || !file_path) {
         return res.status(400).json({ error: 'title, type, dan file_path wajib diisi' });
     }
 
-    if (type !== 'movie' && type !== 'series') {
-        return res.status(400).json({ error: 'type harus "movie" atau "series"' });
-    }
-
     try {
         const stmt = db.prepare(`
-        INSERT INTO videos (title, type, genre, duration, file_path, poster_path, year, country, description, bg_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO videos (
+                title, type, genre, duration, file_path, 
+                poster_path, year, country, description, bg_path
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
-
-        const info = stmt.run(title, type, genre, duration || null, file_path, poster_path || null, year || null, country || null, description || null);
-
+        const info = stmt.run(
+            title, 
+            type, 
+            genre || null, 
+            duration || null, 
+            file_path, 
+            poster_path || null, 
+            year || null, 
+            country || null, 
+            description || null, 
+            bg_path || null
+        );
         res.status(201).json({ id: info.lastInsertRowid, message: 'Video berhasil ditambahkan' });
-
     } catch (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
             res.status(409).json({ error: 'File path sudah ada' });
@@ -151,12 +187,19 @@ app.post('/api/videos/:id/upload-poster', upload.single('poster'), (req, res) =>
 
 // Endpoint upload backdrop details
 app.post('/api/videos/:id/upload-bg', upload.single('bg'), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'Gagal upload background' });
+    if (!req.file) {
+        return res.status(400).json({ error: 'Gagal upload background' });
+    }
     const videoId = req.params.id;
     const bgPath = req.file.filename;
+
     const stmt = db.prepare('UPDATE videos SET bg_path = ? WHERE id = ?');
     const result = stmt.run(bgPath, videoId);
-    if (result.changes === 0) return res.status(404).json({ error: 'Video tidak ditemukan' });
+
+    if (result.changes === 0) {
+        return res.status(404).json({ error: 'Video tidak ditemukan' });
+    }
+
     res.json({ message: 'Background berhasil diupload', bgPath });
 });
 
@@ -172,31 +215,143 @@ app.get('/api/videos/:id', (req, res) => {
 app.put('/api/videos/:id', (req, res) => {
     const { id } = req.params;
     const { title, type, genre, duration, file_path, poster_path, year, country, description, bg_path } = req.body;
-    const stmt = db.prepare(`
-        UPDATE videos SET 
-            title = ?, type = ?, genre = ?, duration = ?, 
-            file_path = ?, poster_path = ?, year = ?, country = ?, description = ?, bg_path = ?
-        WHERE id = ?
-    `);
-    const result = stmt.run(title, type, genre, duration, file_path, poster_path, year, country, description, id);
-    if (result.changes === 0) return res.status(404).json({ error: 'Video tidak ditemukan' });
-    res.json({ message: 'Video berhasil diupdate' });
+
+    if (!title || !type || !file_path) {
+        return res.status(400).json({ error: 'title, type, dan file_path wajib diisi' });
+    }
+
+    try {
+        const stmt = db.prepare(`
+            UPDATE videos SET 
+                title = ?, 
+                type = ?, 
+                genre = ?, 
+                duration = ?, 
+                file_path = ?, 
+                poster_path = ?, 
+                year = ?, 
+                country = ?, 
+                description = ?, 
+                bg_path = ?
+            WHERE id = ?
+        `);
+        const result = stmt.run(
+            title, 
+            type, 
+            genre || null, 
+            duration || null, 
+            file_path, 
+            poster_path || null, 
+            year || null, 
+            country || null, 
+            description || null, 
+            bg_path || null, 
+            id
+        );
+
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Video tidak ditemukan' });
+        }
+
+        res.json({ message: 'Video berhasil diupdate' });
+    } catch (err) {
+        if (err.message.includes('UNIQUE constraint failed')) {
+            res.status(409).json({ error: 'File path sudah digunakan oleh video lain' });
+        } else {
+            res.status(500).json({ error: err.message });
+        }
+    }
 });
 
-//Endpoint DELETE Details
+// Endpoint Delete video (juga hapus file poster dan background jika ada)
 app.delete('/api/videos/:id', (req, res) => {
     const { id } = req.params;
-    // Hapus juga file poster jika ada
-    const video = db.prepare('SELECT poster_path FROM videos WHERE id = ?').get(id);
-    if (video && video.poster_path) {
-        const fs = require('fs');
-        const posterFile = path.join(__dirname, 'thumbnails', video.poster_path);
-        if (fs.existsSync(posterFile)) fs.unlinkSync(posterFile);
+    const fs = require('fs');
+    const path = require('path');
+
+    try {
+        // Ambil data video untuk tahu file apa yang harus dihapus
+        const video = db.prepare('SELECT poster_path, bg_path FROM videos WHERE id = ?').get(id);
+        
+        if (!video) {
+            return res.status(404).json({ error: 'Video tidak ditemukan' });
+        }
+
+        // Hapus file poster jika ada
+        if (video.poster_path) {
+            const posterFile = path.join(__dirname, 'thumbnails', video.poster_path);
+            if (fs.existsSync(posterFile)) {
+                fs.unlinkSync(posterFile);
+            }
+        }
+
+        // Hapus file background jika ada
+        if (video.bg_path) {
+            const bgFile = path.join(__dirname, 'thumbnails', video.bg_path);
+            if (fs.existsSync(bgFile)) {
+                fs.unlinkSync(bgFile);
+            }
+        }
+
+        // Hapus record dari database
+        const stmt = db.prepare('DELETE FROM videos WHERE id = ?');
+        const result = stmt.run(id);
+
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Video tidak ditemukan' });
+        }
+
+        res.json({ message: 'Video berhasil dihapus' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    const stmt = db.prepare('DELETE FROM videos WHERE id = ?');
-    const result = stmt.run(id);
-    if (result.changes === 0) return res.status(404).json({ error: 'Video tidak ditemukan' });
-    res.json({ message: 'Video berhasil dihapus' });
+});
+
+// Endpoint UPDATE video
+app.put('/api/videos/:id', (req, res) => {
+    const { id } = req.params;
+    const { title, type, genre, duration, file_path, poster_path, year, country, description, bg_path } = req.body;
+
+    // Validasi sederhana
+    if (!title || !type || !file_path) {
+        return res.status(400).json({ error: 'title, type, dan file_path wajib diisi' });
+    }
+
+    try {
+        const stmt = db.prepare(`
+            UPDATE videos SET 
+                title = ?, 
+                type = ?, 
+                genre = ?, 
+                duration = ?, 
+                file_path = ?, 
+                poster_path = ?, 
+                year = ?, 
+                country = ?, 
+                description = ?, 
+                bg_path = ?
+            WHERE id = ?
+        `);
+        const result = stmt.run(
+            title, type, genre, duration, 
+            file_path, poster_path || null, 
+            year || null, country || null, 
+            description || null, bg_path || null, 
+            id
+        );
+
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Video tidak ditemukan' });
+        }
+
+        res.json({ message: 'Video berhasil diupdate' });
+    } catch (err) {
+        if (err.message.includes('UNIQUE constraint failed')) {
+            res.status(409).json({ error: 'File path sudah digunakan oleh video lain' });
+        } else {
+            res.status(500).json({ error: err.message });
+        }
+    }
 });
 
 // Jalankan server
